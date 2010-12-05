@@ -378,7 +378,7 @@
         }
         return newf;
     }
- 
+
     R.getRGB = cacher(function (colour) {
         if (!colour || !!((colour = Str(colour)).indexOf("-") + 1)) {
             return {r: -1, g: -1, b: -1, hex: "none", error: 1};
@@ -518,7 +518,7 @@
             return {x: 0, y: 0, width: 0, height: 0};
         }
         path = path2curve(path);
-        var x = 0, 
+        var x = 0,
             y = 0,
             X = [],
             Y = [],
@@ -1374,7 +1374,7 @@
                                 $(ig, {x: 0, y: 0});
                                 ig.setAttributeNS(o.paper.xlink, "href", isURL[1]);
                                 el[appendChild](ig);
- 
+
                                 var img = doc.createElement("img");
                                 img.style.cssText = "position:absolute;left:-9999em;top-9999em";
                                 img.onload = function () {
@@ -1442,7 +1442,7 @@
                     }
                 }
             }
-            
+
             tuneText(o, params);
             if (rotxy) {
                 o.rotate(rotxy.join(S));
@@ -1458,7 +1458,7 @@
             var a = el.attrs,
                 node = el.node,
                 fontSize = node.firstChild ? toInt(doc.defaultView.getComputedStyle(node.firstChild, E).getPropertyValue("font-size"), 10) : 10;
- 
+
             if (params[has]("text")) {
                 a.text = params.text;
                 while (node.firstChild) {
@@ -1709,6 +1709,18 @@
                 t.node.removeAttribute("filter");
             }
         };
+        Element[proto].toMask = function () {
+          return convertToMask(this.paper, this);
+        };
+        Element[proto].applyMask = function (mask) {
+          this.node.setAttributeNS(this.paper.xlink, "mask", "url(#" + mask.node.id + ")");
+          return this;
+        };
+        Element[proto].applyClipPath = function (cpath) {
+          $(this.node, {"clip-path": "url(#" + cpath.node.id + ")"});
+          return this;
+        };
+        
         var theCircle = function (svg, x, y, r) {
             var el = $("circle");
             svg.canvas && svg.canvas[appendChild](el);
@@ -1755,6 +1767,54 @@
             res.type = "text";
             setFillAndStroke(res, res.attrs);
             return res;
+        },
+        theGroup = function (svg, id) {
+          var el = $("g");
+          if(id)
+            $(el, {id: id});
+          svg.canvas && svg.canvas[appendChild](el);
+
+          var res = new Element(el, svg);
+          res.attrs = {id: id};
+          res.type = "g";
+          res.push = function (x) {
+            el[appendChild](x.node || x)
+            return this;
+          };
+          return res;
+        },
+        theClipPath = function (svg, paths) {
+          var el = $("clipPath");
+          el.id = createUUID();
+          
+          for(var n = 0, N = paths.length, node; n < N; n++) {
+            node = paths[n].node;
+            node.parentNode.removeChild(node);
+            el[appendChild](node);
+          }
+          
+          svg.canvas && svg.defs[appendChild](el);
+          
+          var res = new Element(el, svg);
+          res.attrs = {id: el.id};
+          res.type = "clipPath";
+          return res;
+        },
+        moveToDefs = function (svg, el) {
+          el.node.parentNode && el.node.parentNode.removeChild(el.node);
+          svg.canvas && svg.defs[appendChild](el.node);
+          return el;
+        },
+        convertToMask = function (svg, el) {
+          el.node.parentNode.removeChild(el.node);
+          var mask = $("mask");
+          mask.setAttribute("id", createUUID());
+          mask[appendChild](el.node);
+          
+          var res = new Element(mask, svg);
+          res.attrs = {id: mask.getAttribute("id")};
+          res.type = "mask";
+          return moveToDefs(svg, res);
         },
         setSize = function (width, height) {
             this.width = width || this.width;
@@ -1863,7 +1923,7 @@
                 }
                 return res[join](S);
             };
-        
+
         R[toString] = function () {
             return  "Your browser doesn\u2019t support SVG. Falling down to VML.\nYou are running Rapha\xebl " + this.version;
         };
@@ -1967,7 +2027,7 @@
             params["font-size"] && (s.fontSize = params["font-size"]);
             params["font-weight"] && (s.fontWeight = params["font-weight"]);
             params["font-style"] && (s.fontStyle = params["font-style"]);
-            if (params.opacity != null || 
+            if (params.opacity != null ||
                 params["stroke-width"] != null ||
                 params.fill != null ||
                 params.stroke != null ||
@@ -2029,7 +2089,7 @@
                 params["stroke-width"] && (stroke.weight = width);
                 width && width < 1 && (opacity *= width) && (stroke.weight = 1);
                 stroke.opacity = opacity;
-                
+
                 params["stroke-linejoin"] && (stroke.joinstyle = params["stroke-linejoin"] || "miter");
                 stroke.miterlimit = params["stroke-miterlimit"] || 8;
                 params["stroke-linecap"] && (stroke.endcap = params["stroke-linecap"] == "butt" ? "flat" : params["stroke-linecap"] == "square" ? "square" : "round");
@@ -2062,7 +2122,7 @@
                 res.H = a.h = res.paper.span.offsetHeight;
                 res.X = a.x;
                 res.Y = a.y + round(res.H / 2);
- 
+
                 // text-anchor emulationm
                 switch (a["text-anchor"]) {
                     case "start":
@@ -2224,6 +2284,7 @@
                     h = attr.ry * 2;
                     break;
                 case "image":
+                case "g":
                     x = +attr.x;
                     y = +attr.y;
                     w = attr.width || 0;
@@ -2434,7 +2495,7 @@
                 delete this.attrs.blur;
             }
         };
- 
+
         theCircle = function (vml, x, y, r) {
             var g = createNode("group"),
                 o = createNode("oval"),
@@ -2623,7 +2684,7 @@
             return true;
         };
     }
- 
+
     // rest
     // WebKit rendering bug workaround method
     var version = navigator.userAgent.match(/Version\/(.*?)\s/);
@@ -2635,7 +2696,7 @@
     } else {
         paperproto.safari = function () {};
     }
- 
+
     // Events
     var preventDefault = function () {
         this.returnValue = false;
@@ -2800,6 +2861,12 @@
     };
     paperproto.text = function (x, y, text) {
         return theText(this, x || 0, y || 0, Str(text));
+    };
+    paperproto.group = function (id) {
+      return theGroup(this, id);
+    };
+    paperproto.clipPath = function (paths) {
+      return theClipPath(this, [].concat(paths));
     };
     paperproto.set = function (itemsArray) {
         arguments[length] > 1 && (itemsArray = Array[proto].splice.call(arguments, 0, arguments[length]));
@@ -3508,7 +3575,7 @@
         return "Rapha\xebl\u2019s object";
     };
     R.ae = animationElements;
- 
+
     // Set
     var Set = function (items) {
         this.items = [];
